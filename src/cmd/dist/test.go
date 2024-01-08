@@ -655,6 +655,7 @@ func (t *tester) registerTests() {
 		}
 		pkgs := strings.Fields(string(all))
 		for _, pkg := range pkgs {
+			fmt.Printf("rulin pkg name: %s\n", pkg)
 			if registerStdTestSpecially[pkg] {
 				continue
 			}

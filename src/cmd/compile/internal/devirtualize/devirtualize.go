@@ -16,6 +16,7 @@ import (
 	"cmd/compile/internal/ir"
 	"cmd/compile/internal/typecheck"
 	"cmd/compile/internal/types"
+	"fmt"
 )
 
 // StaticCall devirtualizes the given call if possible when the concrete callee
@@ -31,23 +32,28 @@ func StaticCall(call *ir.CallExpr) {
 	// which is a visible change in semantics (e.g., #52072). To prevent
 	// this, we skip devirtualizing calls within go/defer statements
 	// altogether.
+	fmt.Printf("rulin static is called\n")
 	if call.GoDefer {
+		fmt.Printf("rulin return -1\n")
 		return
 	}
 
 	if call.Op() != ir.OCALLINTER {
+		fmt.Printf("rulin return 0\n")
 		return
 	}
 
 	sel := call.Fun.(*ir.SelectorExpr)
 	r := ir.StaticValue(sel.X)
 	if r.Op() != ir.OCONVIFACE {
+		fmt.Printf("rulin return 1\n")
 		return
 	}
 	recv := r.(*ir.ConvExpr)
 
 	typ := recv.X.Type()
 	if typ.IsInterface() {
+		fmt.Printf("rulin return 2\n")
 		return
 	}
 
@@ -55,6 +61,7 @@ func StaticCall(call *ir.CallExpr) {
 	// and we'd need an indirect call through the dictionary anyway.
 	// We're unable to devirtualize this call.
 	if typ.IsShape() {
+		fmt.Printf("rulin return 3\n")
 		return
 	}
 
@@ -75,8 +82,11 @@ func StaticCall(call *ir.CallExpr) {
 	// reference to .dict.T[int]).
 	if typ.HasShape() {
 		if base.Flag.LowerM != 0 {
+			fmt.Printf("rulin cannot devirtualize 1\n")
 			base.WarnfAt(call.Pos(), "cannot devirtualize %v: shaped receiver %v", call, typ)
 		}
+
+		fmt.Printf("rulin return 4\n")
 		return
 	}
 
@@ -94,8 +104,11 @@ func StaticCall(call *ir.CallExpr) {
 	// now, punting is easy and safe.
 	if sel.X.Type().HasShape() {
 		if base.Flag.LowerM != 0 {
+			fmt.Printf("rulin cannot devirtualize 2\n")
 			base.WarnfAt(call.Pos(), "cannot devirtualize %v: shaped interface %v", call, sel.X.Type())
 		}
+
+		fmt.Printf("rulin return 5\n")
 		return
 	}
 
@@ -105,18 +118,25 @@ func StaticCall(call *ir.CallExpr) {
 	switch x.Op() {
 	case ir.ODOTMETH:
 		if base.Flag.LowerM != 0 {
+			fmt.Printf("rulin cannot devirtualize 3\n")
 			base.WarnfAt(call.Pos(), "devirtualizing %v to %v", sel, typ)
 		}
+
+		fmt.Printf("rulin devirtualize 0\n")
 		call.SetOp(ir.OCALLMETH)
 		call.Fun = x
 	case ir.ODOTINTER:
 		// Promoted method from embedded interface-typed field (#42279).
 		if base.Flag.LowerM != 0 {
+			fmt.Printf("rulin cannot devirtualize 4\n")
 			base.WarnfAt(call.Pos(), "partially devirtualizing %v to %v", sel, typ)
 		}
+		fmt.Printf("rulin devirtualize 1\n")
 		call.SetOp(ir.OCALLINTER)
 		call.Fun = x
 	default:
+
+		fmt.Printf("rulin cannot devirtualize 5\n")
 		base.FatalfAt(call.Pos(), "failed to devirtualize %v (%v)", x, x.Op())
 	}
 
@@ -130,10 +150,16 @@ func StaticCall(call *ir.CallExpr) {
 	switch ft := x.Type(); ft.NumResults() {
 	case 0:
 	case 1:
+
+		fmt.Printf("rulin devirtualize 2\n")
 		call.SetType(ft.Result(0).Type)
 	default:
+
+		fmt.Printf("rulin devirtualize 3\n")
 		call.SetType(ft.ResultsTuple())
 	}
+
+	fmt.Printf("rulin cannot devirtualize 6\n")
 
 	// Desugar OCALLMETH, if we created one (#57309).
 	typecheck.FixMethodCall(call)
